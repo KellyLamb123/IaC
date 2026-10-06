@@ -1,6 +1,8 @@
-#SPDX-License-Identifier: MIT-0
 ---
-- hosts: localhost
-  remote_user: root
+- name: Test OpenSearch role
+  hosts: opensearch
+  become: true
+  gather_facts: true
+
   roles:
-    - roles/opensearch
+    - role: opensearch
