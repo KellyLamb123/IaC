@@ -1,0 +1,12 @@
+---
+opensearch_package_name: "opensearch"
+opensearch_dashboards_package_name: "opensearch-dashboards"
+
+opensearch_repo_key_url: "https://artifacts.opensearch.org/publickeys/opensearch-release.pgp"
+opensearch_repo_keyring: "/etc/apt/keyrings/opensearch-release-keyring"
+
+opensearch_config_path: "/etc/opensearch/opensearch.yml"
+opensearch_dashboards_config_path: "/etc/opensearch-dashboards/opensearch_dashboards.yml"
+
+opensearch_data_path: "/var/lib/opensearch"
+opensearch_logs_path: "/var/log/opensearch"
