@@ -1,3 +1,8 @@
-#SPDX-License-Identifier: MIT-0
 ---
-# tasks file for roles/opensearch
+- name: Validate target operating system
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == "Ubuntu"
+      - ansible_os_family == "Debian"
+    fail_msg: "This role currently supports Ubuntu/Debian-based systems only."
+    success_msg: "Supported Ubuntu target detected."
