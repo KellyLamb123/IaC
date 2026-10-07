@@ -1,0 +1,23 @@
+---
+- name: Install OpenSearch specified version
+  ansible.builtin.apt:
+    name: "opensearch={{ opensearch_version }}"
+    state: present
+    update_cache: true
+    force_apt_get: true
+  environment:
+    DISABLE_INSTALL_DEMO_CONFIG: "true"
+    DISABLE_SECURITY_PLUGIN: "true"
+
+- name: Check installed OpenSearch version
+  ansible.builtin.command:
+    cmd: dpkg-query -W -f='${Version}' opensearch
+  register: opensearch_installed_version
+  changed_when: false
+
+- name: Verify installed OpenSearch version
+  ansible.builtin.assert:
+    that:
+      - opensearch_installed_version.stdout == opensearch_version
+    fail_msg: "Incorrect OpenSearch version is installed."
+    success_msg: "OpenSearch {{ opensearch_version }} is installed."

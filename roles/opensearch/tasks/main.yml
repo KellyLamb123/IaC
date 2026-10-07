@@ -2,7 +2,22 @@
 - name: Validate target operating system
   ansible.builtin.assert:
     that:
-      - ansible_distribution == "Ubuntu"
-      - ansible_os_family == "Debian"
+      - ansible_facts["distribution"] == "Ubuntu"
+      - ansible_facts["os_family"] == "Debian"
     fail_msg: "This role currently supports Ubuntu/Debian-based systems only."
     success_msg: "Supported Ubuntu target detected."
+
+- name: Prepare OpenSearch repositories
+  ansible.builtin.import_tasks: repository.yml
+
+- name: Configure target system
+  ansible.builtin.import_tasks: system.yml
+
+- name: Install OpenSearch
+  ansible.builtin.import_tasks: install_opensearch.yml
+
+- name: Configure OpenSearch
+  ansible.builtin.import_tasks: configure_opensearch.yml
+
+- name: Verify OpenSearch
+  ansible.builtin.import_tasks: verify_opensearch.yml
