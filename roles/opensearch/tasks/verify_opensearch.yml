@@ -7,10 +7,10 @@
     status_code: 200
   register: opensearch_health
   until:
-    - opensearch_health.status == 200
-    - opensearch_health.json.status in ["green", "yellow"]
-  retries: "{{ opensearch_readiness_retries }}"
-  delay: "{{ opensearch_readiness_delay }}"
+    - (opensearch_health.status | default(0)) == 200
+    - >-
+      (opensearch_health.json | default({})).get('status', '')
+      in ['green', 'yellow']
 
 - name: Get OpenSearch information
   ansible.builtin.uri:

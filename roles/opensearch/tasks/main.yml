@@ -21,3 +21,12 @@
 
 - name: Verify OpenSearch
   ansible.builtin.import_tasks: verify_opensearch.yml
+
+- name: Install OpenSearch Dashboards
+  ansible.builtin.import_tasks: install_dashboards.yml
+
+- name: Configure OpenSearch Dashboards
+  ansible.builtin.import_tasks: configure_dashboards.yml
+
+- name: Verify OpenSearch Dashboards
+  ansible.builtin.import_tasks: verify_dashboards.yml
