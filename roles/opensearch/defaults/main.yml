@@ -1,0 +1,19 @@
+---
+opensearch_version: "3.8.0"
+
+opensearch_cluster_name: "opensearch-lab"
+opensearch_node_name: "{{ inventory_hostname }}"
+
+opensearch_network_host: "127.0.0.1"
+opensearch_http_port: 9200
+
+opensearch_vm_max_map_count: 262144
+
+opensearch_dashboards_host: "0.0.0.0"
+opensearch_dashboards_port: 5601
+
+opensearch_dashboards_readiness_retries: 60
+opensearch_dashboards_readiness_delay: 5
+
+opensearch_readiness_retries: 12
+opensearch_readiness_delay: 5

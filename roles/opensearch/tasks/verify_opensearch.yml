@@ -1,0 +1,29 @@
+---
+- name: Wait until OpenSearch API is ready
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ opensearch_http_port }}/_cluster/health"
+    method: GET
+    return_content: true
+    status_code: 200
+  register: opensearch_health
+  until:
+    - (opensearch_health.status | default(0)) == 200
+    - >-
+      (opensearch_health.json | default({})).get('status', '')
+      in ['green', 'yellow']
+
+- name: Get OpenSearch information
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ opensearch_http_port }}"
+    method: GET
+    return_content: true
+    status_code: 200
+  register: opensearch_info
+
+- name: Verify OpenSearch version and cluster name
+  ansible.builtin.assert:
+    that:
+      - opensearch_info.json.version.number == opensearch_version
+      - opensearch_info.json.cluster_name == opensearch_cluster_name
+    fail_msg: "OpenSearch API returned unexpected configuration."
+    success_msg: "OpenSearch {{ opensearch_version }} is ready and configured correctly."
