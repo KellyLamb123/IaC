@@ -12,6 +12,9 @@
       (opensearch_health.json | default({})).get('status', '')
       in ['green', 'yellow']
 
+  retries: "{{ opensearch_readiness_retries }}"
+  delay: "{{ opensearch_readiness_delay }}"
+
 - name: Get OpenSearch information
   ansible.builtin.uri:
     url: "http://127.0.0.1:{{ opensearch_http_port }}"
