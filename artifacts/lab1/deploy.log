@@ -1,0 +1,127 @@
+
+PLAY [Deploy OpenSearch and OpenSearch Dashboards] *****************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [opensearch-node]
+
+TASK [opensearch : Validate target operating system] ***************************
+ok: [opensearch-node] => {
+    "changed": false,
+    "msg": "Supported Ubuntu target detected."
+}
+
+TASK [opensearch : Install packages required for OpenSearch repository] ********
+ok: [opensearch-node]
+
+TASK [opensearch : Create APT keyrings directory] ******************************
+ok: [opensearch-node]
+
+TASK [opensearch : Download OpenSearch repository GPG key] *********************
+ok: [opensearch-node]
+
+TASK [opensearch : Check OpenSearch binary keyring] ****************************
+ok: [opensearch-node]
+
+TASK [opensearch : Convert OpenSearch GPG key to keyring format] ***************
+skipping: [opensearch-node]
+
+TASK [opensearch : Set permissions for OpenSearch keyring] *********************
+ok: [opensearch-node]
+
+TASK [opensearch : Add OpenSearch APT repository] ******************************
+ok: [opensearch-node]
+
+TASK [opensearch : Add OpenSearch Dashboards APT repository] *******************
+ok: [opensearch-node]
+
+TASK [opensearch : Update APT cache after adding OpenSearch repositories] ******
+skipping: [opensearch-node]
+
+TASK [opensearch : Configure vm.max_map_count for OpenSearch] ******************
+ok: [opensearch-node]
+
+TASK [opensearch : Apply pending sysctl changes] *******************************
+
+TASK [opensearch : Read current vm.max_map_count value] ************************
+ok: [opensearch-node]
+
+TASK [opensearch : Verify vm.max_map_count value] ******************************
+ok: [opensearch-node] => {
+    "changed": false,
+    "msg": "vm.max_map_count is configured correctly."
+}
+
+TASK [opensearch : Install OpenSearch specified version] ***********************
+ok: [opensearch-node]
+
+TASK [opensearch : Check installed OpenSearch version] *************************
+ok: [opensearch-node]
+
+TASK [opensearch : Install OpenSearch specified version] ***********************
+ok: [opensearch-node]
+
+TASK [opensearch : Configure OpenSearch using Jinja2 template] *****************
+ok: [opensearch-node]
+
+TASK [opensearch : Enable and start OpenSearch service] ************************
+ok: [opensearch-node]
+
+TASK [opensearch : Apply pending OpenSearch handler] ***************************
+
+TASK [opensearch : Wait until OpenSearch API is ready] *************************
+ok: [opensearch-node]
+
+TASK [opensearch : Get OpenSearch information] *********************************
+ok: [opensearch-node]
+
+TASK [opensearch : Verify OpenSearch version and cluster name] *****************
+ok: [opensearch-node] => {
+    "changed": false,
+    "msg": "OpenSearch 3.8.0 is ready and configured correctly."
+}
+
+TASK [opensearch : Install OpenSearch Dashboards specified version] ************
+ok: [opensearch-node]
+
+TASK [opensearch : Check Security Dashboards plugin directory] *****************
+ok: [opensearch-node]
+
+TASK [opensearch : Stop Dashboards before removing Security plugin] ************
+ok: [opensearch-node]
+
+TASK [opensearch : Remove Security Dashboards plugin if present] ***************
+changed: [opensearch-node]
+
+TASK [opensearch : Check installed OpenSearch Dashboards version] **************
+ok: [opensearch-node]
+
+TASK [opensearch : Verify installed OpenSearch Dashboards version] *************
+ok: [opensearch-node] => {
+    "changed": false,
+    "msg": "OpenSearch Dashboards 3.8.0 is installed."
+}
+
+TASK [opensearch : Configure OpenSearch Dashboards using Jinja2 template] ******
+changed: [opensearch-node]
+
+TASK [opensearch : Apply pending OpenSearch Dashboards handler] ****************
+
+RUNNING HANDLER [opensearch : Restart OpenSearch Dashboards] *******************
+changed: [opensearch-node]
+
+TASK [opensearch : Enable and start OpenSearch Dashboards service] *************
+changed: [opensearch-node]
+
+TASK [opensearch : Wait until OpenSearch Dashboards API is ready] **************
+FAILED - RETRYING: [opensearch-node]: opensearch : Wait until OpenSearch Dashboards API is ready (59 retries left).
+ok: [opensearch-node]
+
+TASK [opensearch : Verify OpenSearch Dashboards API version] *******************
+ok: [opensearch-node] => {
+    "changed": false,
+    "msg": "OpenSearch Dashboards 3.8.0 is ready and configured correctly."
+}
+
+PLAY RECAP *********************************************************************
+opensearch-node            : ok=31   changed=4    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0   
+

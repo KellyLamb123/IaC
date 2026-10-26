@@ -1,0 +1,8 @@
+---
+- name: Test OpenSearch role
+  hosts: opensearch
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: opensearch

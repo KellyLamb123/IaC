@@ -1,0 +1,25 @@
+---
+- name: Configure vm.max_map_count for OpenSearch
+  ansible.builtin.template:
+    src: opensearch-sysctl.conf.j2
+    dest: /etc/sysctl.d/99-opensearch.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload sysctl settings
+
+- name: Apply pending sysctl changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Read current vm.max_map_count value
+  ansible.builtin.command:
+    cmd: sysctl -n vm.max_map_count
+  register: opensearch_current_vm_max_map_count
+  changed_when: false
+
+- name: Verify vm.max_map_count value
+  ansible.builtin.assert:
+    that:
+      - opensearch_current_vm_max_map_count.stdout | int == opensearch_vm_max_map_count | int
+    fail_msg: "vm.max_map_count was not configured correctly."
+    success_msg: "vm.max_map_count is configured correctly."

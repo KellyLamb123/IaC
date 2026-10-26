@@ -1,0 +1,25 @@
+---
+- name: Wait until OpenSearch Dashboards API is ready
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ opensearch_dashboards_port }}/api/status"
+    method: GET
+    return_content: true
+    status_code: 200
+    use_proxy: false
+  register: opensearch_dashboards_status
+  until:
+    - (opensearch_dashboards_status.status | default(0)) == 200
+    - >-
+      (opensearch_dashboards_status.json | default({}))
+      .get('status', {}).get('overall', {}).get('state', '') == 'green'
+  retries: "{{ opensearch_dashboards_readiness_retries }}"
+  delay: "{{ opensearch_dashboards_readiness_delay }}"
+
+- name: Verify OpenSearch Dashboards API version
+  ansible.builtin.assert:
+    that:
+      - opensearch_dashboards_status.json.version.number == opensearch_version
+    fail_msg: "OpenSearch Dashboards API returned an unexpected version."
+    success_msg: >-
+      OpenSearch Dashboards {{ opensearch_version }}
+      is ready and configured correctly.

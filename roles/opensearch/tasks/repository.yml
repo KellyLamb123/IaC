@@ -1,0 +1,73 @@
+---
+- name: Install packages required for OpenSearch repository
+  ansible.builtin.apt:
+    name:
+      - lsb-release
+      - ca-certificates
+      - curl
+      - gnupg2
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create APT keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download OpenSearch repository GPG key
+  ansible.builtin.get_url:
+    url: "{{ opensearch_repo_key_url }}"
+    dest: "{{ opensearch_repo_key_source }}"
+    owner: root
+    group: root
+    mode: "0644"
+  register: opensearch_key_download
+
+- name: Check OpenSearch binary keyring
+  ansible.builtin.stat:
+    path: "{{ opensearch_repo_keyring }}"
+  register: opensearch_keyring_status
+
+- name: Convert OpenSearch GPG key to keyring format
+  ansible.builtin.command:
+    cmd: >-
+      gpg --dearmor --batch --yes
+      --output {{ opensearch_repo_keyring }}
+      {{ opensearch_repo_key_source }}
+  when:
+    - opensearch_key_download.changed or not opensearch_keyring_status.stat.exists
+
+- name: Set permissions for OpenSearch keyring
+  ansible.builtin.file:
+    path: "{{ opensearch_repo_keyring }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Add OpenSearch APT repository
+  ansible.builtin.copy:
+    src: opensearch-3.x.list
+    dest: /etc/apt/sources.list.d/opensearch-3.x.list
+    owner: root
+    group: root
+    mode: "0644"
+  register: opensearch_repository
+
+- name: Add OpenSearch Dashboards APT repository
+  ansible.builtin.copy:
+    src: opensearch-dashboards-3.x.list
+    dest: /etc/apt/sources.list.d/opensearch-dashboards-3.x.list
+    owner: root
+    group: root
+    mode: "0644"
+  register: opensearch_dashboards_repository
+
+- name: Update APT cache after adding OpenSearch repositories
+  ansible.builtin.apt:
+    update_cache: true
+  when:
+    - opensearch_repository.changed or opensearch_dashboards_repository.changed
