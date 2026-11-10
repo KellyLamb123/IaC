@@ -11,3 +11,8 @@ opensearch_dashboards_config_path: "/etc/opensearch-dashboards/opensearch_dashbo
 
 opensearch_data_path: "/var/lib/opensearch"
 opensearch_logs_path: "/var/log/opensearch"
+
+opensearch_network_host: "127.0.0.1"
+opensearch_http_port: 9200
+
+opensearch_vm_max_map_count: 262144
