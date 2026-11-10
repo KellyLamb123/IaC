@@ -1,5 +1,3 @@
-
----
 - name: Define logs data stream template
   ansible.builtin.set_fact:
     lab_logs_template:
@@ -9,8 +7,9 @@
       data_stream: {}
       template:
         settings:
-          number_of_shards: 1
-          number_of_replicas: 0
+          index:
+            number_of_shards: "1"
+            number_of_replicas: "0"
         mappings:
           properties:
             "@timestamp":
@@ -60,6 +59,7 @@
     or lab_logs_template_current.get('priority', 0) | int != 200
     or lab_logs_template_current.get('template', {})
     != lab_logs_template.template
+  changed_when: true
   no_log: true
 
 - name: Verify logs index template
@@ -111,6 +111,7 @@
     use_proxy: false
     status_code: 200
   when: logs_stream_check.status == 404
+  changed_when: true
   no_log: true
 
 - name: Read configured logs data stream

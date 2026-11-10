@@ -30,6 +30,7 @@
     status_code: 200
     use_proxy: false
   when: dashboards_credentials.status == 401
+  changed_when: true
   no_log: true
 
 - name: Verify Dashboards service account credentials

@@ -71,6 +71,7 @@
     or (lab_roles_existing.json[item.key].tenant_permissions | default([])) != item.value.tenant_permissions
     or (lab_roles_existing.json[item.key].index_permissions | default([]) | map(attribute='index_patterns') | list) != (item.value.index_permissions | map(attribute='index_patterns') | list)
     or (lab_roles_existing.json[item.key].index_permissions | default([]) | map(attribute='allowed_actions') | list) != (item.value.index_permissions | map(attribute='allowed_actions') | list)
+  changed_when: true
   no_log: true
 
 - name: Read configured lab Security roles

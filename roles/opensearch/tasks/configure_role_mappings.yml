@@ -41,6 +41,7 @@
     or (lab_mappings_existing.json[item.value.role].backend_roles | default([])) != []
     or (lab_mappings_existing.json[item.value.role].and_backend_roles | default([])) != []
     or (lab_mappings_existing.json[item.value.role].hosts | default([])) != []
+  changed_when: true
   no_log: true
 
 - name: Read configured role mappings
@@ -69,3 +70,4 @@
   loop: "{{ lab_security_users | dict2items }}"
   loop_control:
     label: "{{ item.value.role }}"
+  no_log: true

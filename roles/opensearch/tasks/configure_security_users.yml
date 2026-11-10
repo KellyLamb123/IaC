@@ -76,6 +76,7 @@
     or (lab_users_existing.json[item.key].description | default('')) != item.value.description
     or (lab_users_existing.json[item.key].backend_roles | default([])) != []
     or (lab_users_existing.json[item.key].opendistro_security_roles | default([])) != []
+  changed_when: true
   no_log: true
 
 - name: Read final lab Security users
@@ -104,3 +105,4 @@
   loop: "{{ lab_security_users | dict2items }}"
   loop_control:
     label: "{{ item.key }}"
+  no_log: true

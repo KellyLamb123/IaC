@@ -62,6 +62,59 @@
   changed_when: false
   no_log: true
 
+- name: Scenario 2 - Define temporary logs index
+  ansible.builtin.set_fact:
+    test2_delete_index: "logs-molecule-delete-{{ now(utc=true, fmt='%Y%m%d%H%M%S%f') }}"
+
+- name: Scenario 2 - Test index deletion is denied for reader
+  block:
+    - name: Scenario 2 - Create temporary logs index as admin
+      ansible.builtin.uri:
+        url: "https://127.0.0.1:9200/{{ test2_delete_index }}"
+        method: PUT
+        url_username: admin
+        url_password: "{{ vault_opensearch_admin_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        use_proxy: false
+        body_format: json
+        body:
+          settings:
+            number_of_shards: 1
+            number_of_replicas: 0
+        status_code: 200
+      changed_when: true
+      no_log: true
+
+    - name: Scenario 2 - Try to delete entire logs index as reader
+      ansible.builtin.uri:
+        url: "https://127.0.0.1:9200/{{ test2_delete_index }}"
+        method: DELETE
+        url_username: logs_reader_user
+        url_password: "{{ vault_opensearch_reader_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        use_proxy: false
+        status_code: 403
+      register: test2_index_delete
+      changed_when: false
+      no_log: true
+
+  always:
+    - name: Scenario 2 - Remove temporary logs index as admin
+      ansible.builtin.uri:
+        url: "https://127.0.0.1:9200/{{ test2_delete_index }}"
+        method: DELETE
+        url_username: admin
+        url_password: "{{ vault_opensearch_admin_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        use_proxy: false
+        status_code: [200, 404]
+      register: test2_index_cleanup
+      changed_when: test2_index_cleanup.status == 200
+      no_log: true
+
 - name: Scenario 2 - Define temporary foreign index
   ansible.builtin.set_fact:
     test2_foreign_index: "molecule-outside-logs-{{ now(utc=true, fmt='%Y%m%d%H%M%S%f') }}"
@@ -135,7 +188,8 @@
       - test2_search.status == 200
       - test2_write.status == 403
       - test2_delete.status == 403
+      - test2_index_delete.status == 403
       - test2_foreign_read.status == 403
     quiet: true
     fail_msg: "Scenario 2 FAILED - Reader permissions are incorrect."
-    success_msg: "Scenario 2 PASSED - Document read; write, delete and foreign access denied."
+    success_msg: "Scenario 2 PASSED - Document read; write, document/index deletion and foreign access denied."
