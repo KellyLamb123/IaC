@@ -1,0 +1,43 @@
+---
+# Scenario 1: Write-only user
+
+- name: Scenario 1 - Write document to logs as writer
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:9200/logs/_doc?refresh=true"
+    method: POST
+    url_username: logs_writer_user
+    url_password: "{{ vault_opensearch_writer_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    body_format: json
+    body:
+      "@timestamp": "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%S.%fZ') }}"
+      message: "Molecule scenario 1 test document"
+    status_code: 201
+  register: test1_write
+  no_log: true
+
+- name: Scenario 1 - Search logs as writer
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:9200/logs/_search"
+    method: GET
+    url_username: logs_writer_user
+    url_password: "{{ vault_opensearch_writer_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    status_code: 403
+  register: test1_search
+  changed_when: false
+  no_log: true
+
+- name: Scenario 1 - Assert write-only permissions
+  ansible.builtin.assert:
+    that:
+      - test1_write.status == 201
+      - test1_write.json.result == 'created'
+      - test1_write.json._id is defined
+      - test1_search.status == 403
+    fail_msg: "Scenario 1 FAILED - Writer permissions are incorrect."
+    success_msg: "Scenario 1 PASSED - Document created and search denied."

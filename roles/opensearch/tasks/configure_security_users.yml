@@ -1,0 +1,106 @@
+---
+- name: Define lab Security users
+  ansible.builtin.set_fact:
+    lab_security_users:
+      logs_writer_user:
+        password: "{{ vault_opensearch_writer_password }}"
+        description: "Lab user with write-only access"
+        role: logs_writer
+
+      logs_reader_user:
+        password: "{{ vault_opensearch_reader_password }}"
+        description: "Lab user with read-only access"
+        role: logs_reader
+
+      cluster_admin_user:
+        password: "{{ vault_opensearch_cluster_admin_password }}"
+        description: "Lab cluster administrator without index access"
+        role: cluster_admin
+  no_log: true
+
+- name: Get existing lab Security users
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_plugins/_security/api/internalusers"
+    method: GET
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    status_code: 200
+  register: lab_users_existing
+  changed_when: false
+  no_log: true
+
+- name: Check lab user passwords
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_plugins/_security/authinfo"
+    method: GET
+    url_username: "{{ item.key }}"
+    url_password: "{{ item.value.password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    status_code:
+      - 200
+      - 401
+  loop: "{{ lab_security_users | dict2items }}"
+  register: lab_user_auth
+  changed_when: false
+  no_log: true
+
+- name: Create or update lab Security users
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_plugins/_security/api/internalusers/{{ item.key }}"
+    method: PUT
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    body_format: json
+    body:
+      password: "{{ item.value.password }}"
+      description: "{{ item.value.description }}"
+      backend_roles: []
+      opendistro_security_roles: []
+    status_code:
+      - 200
+      - 201
+  loop: "{{ lab_security_users | dict2items }}"
+  loop_control:
+    index_var: user_index
+  when: >-
+    item.key not in lab_users_existing.json
+    or lab_user_auth.results[user_index].status != 200
+    or (lab_users_existing.json[item.key].description | default('')) != item.value.description
+    or (lab_users_existing.json[item.key].backend_roles | default([])) != []
+    or (lab_users_existing.json[item.key].opendistro_security_roles | default([])) != []
+  no_log: true
+
+- name: Read final lab Security users
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_plugins/_security/api/internalusers"
+    method: GET
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    status_code: 200
+  register: lab_users_final
+  changed_when: false
+  no_log: true
+
+- name: Verify lab Security users
+  ansible.builtin.assert:
+    that:
+      - item.key in lab_users_final.json
+      - lab_users_final.json[item.key].backend_roles == []
+      - lab_users_final.json[item.key].opendistro_security_roles == []
+    quiet: true
+    success_msg: "Security user {{ item.key }} is configured correctly."
+    fail_msg: "Security user {{ item.key }} is not configured correctly."
+  loop: "{{ lab_security_users | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"

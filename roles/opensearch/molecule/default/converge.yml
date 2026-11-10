@@ -1,0 +1,8 @@
+---
+- name: Converge OpenSearch lab role
+  hosts: opensearch
+  become: true
+  gather_facts: true
+
+  roles:
+    - opensearch

@@ -1,0 +1,138 @@
+
+---
+- name: Define logs data stream template
+  ansible.builtin.set_fact:
+    lab_logs_template:
+      index_patterns:
+        - "logs"
+      priority: 200
+      data_stream: {}
+      template:
+        settings:
+          number_of_shards: 1
+          number_of_replicas: 0
+        mappings:
+          properties:
+            "@timestamp":
+              type: date
+            message:
+              type: text
+
+- name: Check existing logs index template
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_index_template/logs-template"
+    method: GET
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    status_code: [200, 404]
+  register: logs_template_check
+  changed_when: false
+  no_log: true
+
+- name: Read current logs template definition
+  ansible.builtin.set_fact:
+    lab_logs_template_current: >-
+      {{
+        logs_template_check.json.index_templates[0].index_template
+        if logs_template_check.status == 200
+        else {}
+      }}
+
+- name: Create or update logs index template
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_index_template/logs-template"
+    method: PUT
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    body_format: json
+    body: "{{ lab_logs_template }}"
+    status_code: [200, 201]
+  when: >-
+    lab_logs_template_current.get('index_patterns', [])
+    != lab_logs_template.index_patterns
+    or lab_logs_template_current.get('data_stream') is none
+    or lab_logs_template_current.get('priority', 0) | int != 200
+    or lab_logs_template_current.get('template', {})
+    != lab_logs_template.template
+  no_log: true
+
+- name: Verify logs index template
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_index_template/logs-template"
+    method: GET
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    status_code: 200
+  register: logs_template_final
+  changed_when: false
+  no_log: true
+
+- name: Confirm logs data stream template
+  ansible.builtin.assert:
+    that:
+      - logs_template_final.json.index_templates | length == 1
+      - "'logs' in logs_template_final.json.index_templates[0].index_template.index_patterns"
+      - logs_template_final.json.index_templates[0].index_template.data_stream is defined
+      - logs_template_final.json.index_templates[0].index_template.template.mappings.properties['@timestamp'].type == 'date'
+    quiet: true
+    success_msg: "Logs data stream template is configured correctly."
+
+- name: Check existing logs data stream
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_data_stream/logs"
+    method: GET
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    status_code: [200, 404]
+  register: logs_stream_check
+  changed_when: false
+  no_log: true
+
+- name: Create logs data stream
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_data_stream/logs"
+    method: PUT
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    status_code: 200
+  when: logs_stream_check.status == 404
+  no_log: true
+
+- name: Read configured logs data stream
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_data_stream/logs"
+    method: GET
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    status_code: 200
+  register: logs_stream_final
+  changed_when: false
+  no_log: true
+
+- name: Verify logs data stream
+  ansible.builtin.assert:
+    that:
+      - logs_stream_final.json.data_streams | length == 1
+      - logs_stream_final.json.data_streams[0].name == 'logs'
+      - logs_stream_final.json.data_streams[0].template == 'logs-template'
+      - logs_stream_final.json.data_streams[0].timestamp_field.name == '@timestamp'
+    quiet: true
+    success_msg: "Logs data stream is ready and configured correctly."

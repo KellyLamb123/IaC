@@ -1,0 +1,71 @@
+---
+- name: Get existing role mappings
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_plugins/_security/api/rolesmapping"
+    method: GET
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    status_code: 200
+  register: lab_mappings_existing
+  changed_when: false
+  no_log: true
+
+- name: Create or update lab role mappings
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_plugins/_security/api/rolesmapping/{{ item.value.role }}"
+    method: PUT
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    body_format: json
+    body:
+      users:
+        - "{{ item.key }}"
+      backend_roles: []
+      and_backend_roles: []
+      hosts: []
+    status_code:
+      - 200
+      - 201
+  loop: "{{ lab_security_users | dict2items }}"
+  loop_control:
+    label: "{{ item.value.role }}"
+  when: >-
+    item.value.role not in lab_mappings_existing.json
+    or (lab_mappings_existing.json[item.value.role].users | default([])) != [item.key]
+    or (lab_mappings_existing.json[item.value.role].backend_roles | default([])) != []
+    or (lab_mappings_existing.json[item.value.role].and_backend_roles | default([])) != []
+    or (lab_mappings_existing.json[item.value.role].hosts | default([])) != []
+  no_log: true
+
+- name: Read configured role mappings
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_plugins/_security/api/rolesmapping"
+    method: GET
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    status_code: 200
+  register: lab_mappings_final
+  changed_when: false
+  no_log: true
+
+- name: Verify lab role mappings
+  ansible.builtin.assert:
+    that:
+      - item.value.role in lab_mappings_final.json
+      - lab_mappings_final.json[item.value.role].users == [item.key]
+      - lab_mappings_final.json[item.value.role].backend_roles == []
+    quiet: true
+    success_msg: "Role {{ item.value.role }} is mapped to {{ item.key }}."
+    fail_msg: "Role mapping {{ item.value.role }} is incorrect."
+  loop: "{{ lab_security_users | dict2items }}"
+  loop_control:
+    label: "{{ item.value.role }}"

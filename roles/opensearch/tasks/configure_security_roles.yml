@@ -1,0 +1,113 @@
+---
+- name: Define lab Security roles
+  ansible.builtin.set_fact:
+    lab_security_roles:
+      logs_writer:
+        description: "Write documents only to logs data stream"
+        cluster_permissions:
+          - "indices:data/write/bulk*"
+        index_permissions:
+          - index_patterns:
+              - "logs"
+            allowed_actions:
+              - "indices:data/write/index"
+              - "indices:data/write/bulk*"
+        tenant_permissions: []
+
+      logs_reader:
+        description: "Read only indexes matching logs*"
+        cluster_permissions: []
+        index_permissions:
+          - index_patterns:
+              - "logs*"
+            allowed_actions:
+              - "read"
+        tenant_permissions: []
+
+      cluster_admin:
+        description: "Manage cluster settings without index data access"
+        cluster_permissions:
+          - "cluster_monitor"
+          - "cluster:admin/settings/update"
+        index_permissions: []
+        tenant_permissions: []
+
+- name: Get existing OpenSearch Security roles
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_plugins/_security/api/roles"
+    method: GET
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    return_content: true
+    status_code: 200
+  register: lab_roles_existing
+  changed_when: false
+  no_log: true
+
+- name: Create or update lab Security roles
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_plugins/_security/api/roles/{{ item.key }}"
+    method: PUT
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    body_format: json
+    body: "{{ item.value }}"
+    status_code:
+      - 200
+      - 201
+  loop: "{{ lab_security_roles | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: >-
+    item.key not in lab_roles_existing.json
+    or (lab_roles_existing.json[item.key].description | default('')) != item.value.description
+    or (lab_roles_existing.json[item.key].cluster_permissions | default([])) != item.value.cluster_permissions
+    or (lab_roles_existing.json[item.key].tenant_permissions | default([])) != item.value.tenant_permissions
+    or (lab_roles_existing.json[item.key].index_permissions | default([]) | map(attribute='index_patterns') | list) != (item.value.index_permissions | map(attribute='index_patterns') | list)
+    or (lab_roles_existing.json[item.key].index_permissions | default([]) | map(attribute='allowed_actions') | list) != (item.value.index_permissions | map(attribute='allowed_actions') | list)
+  no_log: true
+
+- name: Read configured lab Security roles
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_plugins/_security/api/roles"
+    method: GET
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    return_content: true
+    status_code: 200
+  register: lab_roles_final
+  changed_when: false
+  no_log: true
+
+- name: Verify lab Security roles
+  ansible.builtin.assert:
+    that:
+      - item.key in lab_roles_final.json
+      - lab_roles_final.json[item.key].cluster_permissions == item.value.cluster_permissions
+      - >-
+        (lab_roles_final.json[item.key].index_permissions
+        | map(attribute='index_patterns') | list)
+        ==
+        (item.value.index_permissions
+        | map(attribute='index_patterns') | list)
+      - >-
+        (lab_roles_final.json[item.key].index_permissions
+        | map(attribute='allowed_actions') | list)
+        ==
+        (item.value.index_permissions
+        | map(attribute='allowed_actions') | list)
+    quiet: true
+    fail_msg: "Security role {{ item.key }} is not configured correctly."
+    success_msg: "Security role {{ item.key }} is configured correctly."
+  loop: "{{ lab_security_roles | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"

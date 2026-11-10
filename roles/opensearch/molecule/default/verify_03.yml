@@ -1,0 +1,91 @@
+---
+# Scenario 3: Cluster administrator
+
+- name: Scenario 3 - Get cluster settings
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:9200/_cluster/settings?include_defaults=true"
+    method: GET
+    url_username: cluster_admin_user
+    url_password: "{{ vault_opensearch_cluster_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    status_code: 200
+  register: test3_settings
+  changed_when: false
+  no_log: true
+
+- name: Scenario 3 - Get cluster health
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:9200/_cluster/health"
+    method: GET
+    url_username: cluster_admin_user
+    url_password: "{{ vault_opensearch_cluster_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    status_code: 200
+  register: test3_health
+  changed_when: false
+  no_log: true
+
+- name: Scenario 3 - Get OpenSearch version
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:9200/"
+    method: GET
+    url_username: cluster_admin_user
+    url_password: "{{ vault_opensearch_cluster_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    status_code: 200
+  register: test3_version
+  changed_when: false
+  no_log: true
+
+- name: Scenario 3 - Try to read logs data
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:9200/logs/_search"
+    method: GET
+    url_username: cluster_admin_user
+    url_password: "{{ vault_opensearch_cluster_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    status_code: 403
+  register: test3_read
+  changed_when: false
+  no_log: true
+
+- name: Scenario 3 - Try to write logs data
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:9200/logs/_doc"
+    method: POST
+    url_username: cluster_admin_user
+    url_password: "{{ vault_opensearch_cluster_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    body_format: json
+    body:
+      "@timestamp": "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+      message: "Unauthorized cluster administrator write attempt"
+    status_code: 403
+  register: test3_write
+  changed_when: false
+  no_log: true
+
+- name: Scenario 3 - Assert cluster administrator permissions
+  ansible.builtin.assert:
+    that:
+      - test3_settings.status == 200
+      - test3_settings.json.persistent is defined
+      - test3_settings.json.transient is defined
+      - test3_health.status == 200
+      - test3_health.json.status in ['green', 'yellow']
+      - test3_version.status == 200
+      - test3_version.json.version.number == '3.8.0'
+      - test3_read.status == 403
+      - test3_write.status == 403
+    fail_msg: "Scenario 3 FAILED - Cluster administrator permissions are incorrect."
+    success_msg: "Scenario 3 PASSED - Cluster information accessible; index data access denied."

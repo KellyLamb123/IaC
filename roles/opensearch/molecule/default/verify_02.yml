@@ -1,0 +1,141 @@
+---
+# Scenario 2: Read-only user
+
+- name: Scenario 2 - Find document created by writer
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:9200/logs/_search"
+    method: POST
+    url_username: logs_reader_user
+    url_password: "{{ vault_opensearch_reader_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    body_format: json
+    body:
+      query:
+        ids:
+          values:
+            - "{{ test1_write.json._id }}"
+    status_code: 200
+  register: test2_search
+  changed_when: false
+  no_log: true
+
+- name: Scenario 2 - Verify writer document was found
+  ansible.builtin.assert:
+    that:
+      - test2_search.json.hits.hits | length == 1
+      - test2_search.json.hits.hits[0]._id == test1_write.json._id
+      - test2_search.json.hits.hits[0]._source.message == 'Molecule scenario 1 test document'
+    quiet: true
+    success_msg: "Scenario 2 - Reader found the document created by writer."
+
+- name: Scenario 2 - Try to write as reader
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:9200/logs/_doc"
+    method: POST
+    url_username: logs_reader_user
+    url_password: "{{ vault_opensearch_reader_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    body_format: json
+    body:
+      "@timestamp": "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+      message: "Unauthorized reader write attempt"
+    status_code: 403
+  register: test2_write
+  changed_when: false
+  no_log: true
+
+- name: Scenario 2 - Try to delete writer document
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:9200/{{ test2_search.json.hits.hits[0]._index | urlencode }}/_doc/{{ test1_write.json._id | urlencode }}"
+    method: DELETE
+    url_username: logs_reader_user
+    url_password: "{{ vault_opensearch_reader_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    status_code: 403
+  register: test2_delete
+  changed_when: false
+  no_log: true
+
+- name: Scenario 2 - Define temporary foreign index
+  ansible.builtin.set_fact:
+    test2_foreign_index: "molecule-outside-logs-{{ now(utc=true, fmt='%Y%m%d%H%M%S%f') }}"
+
+- name: Scenario 2 - Test access to index outside logs
+  block:
+    - name: Scenario 2 - Create temporary foreign index
+      ansible.builtin.uri:
+        url: "https://127.0.0.1:9200/{{ test2_foreign_index }}"
+        method: PUT
+        url_username: admin
+        url_password: "{{ vault_opensearch_admin_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        use_proxy: false
+        body_format: json
+        body:
+          settings:
+            number_of_shards: 1
+            number_of_replicas: 0
+        status_code: 200
+      no_log: true
+
+    - name: Scenario 2 - Add sample document to foreign index
+      ansible.builtin.uri:
+        url: "https://127.0.0.1:9200/{{ test2_foreign_index }}/_doc?refresh=true"
+        method: POST
+        url_username: admin
+        url_password: "{{ vault_opensearch_admin_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        use_proxy: false
+        body_format: json
+        body:
+          message: "Foreign index test document"
+        status_code: 201
+      no_log: true
+
+    - name: Scenario 2 - Try reading foreign index as reader
+      ansible.builtin.uri:
+        url: "https://127.0.0.1:9200/{{ test2_foreign_index }}/_search"
+        method: GET
+        url_username: logs_reader_user
+        url_password: "{{ vault_opensearch_reader_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        use_proxy: false
+        status_code: 403
+      register: test2_foreign_read
+      changed_when: false
+      no_log: true
+
+  always:
+    - name: Scenario 2 - Remove temporary foreign index
+      ansible.builtin.uri:
+        url: "https://127.0.0.1:9200/{{ test2_foreign_index }}"
+        method: DELETE
+        url_username: admin
+        url_password: "{{ vault_opensearch_admin_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        use_proxy: false
+        status_code:
+          - 200
+          - 404
+      no_log: true
+
+- name: Scenario 2 - Assert read-only permissions
+  ansible.builtin.assert:
+    that:
+      - test2_search.status == 200
+      - test2_write.status == 403
+      - test2_delete.status == 403
+      - test2_foreign_read.status == 403
+    quiet: true
+    fail_msg: "Scenario 2 FAILED - Reader permissions are incorrect."
+    success_msg: "Scenario 2 PASSED - Document read; write, delete and foreign access denied."

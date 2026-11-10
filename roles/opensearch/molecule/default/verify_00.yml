@@ -1,0 +1,105 @@
+---
+# Scenario 0: OpenSearch readiness
+
+- name: Scenario 0 - Check OpenSearch service
+  ansible.builtin.command:
+    cmd: systemctl is-active opensearch
+  register: test0_service
+  changed_when: false
+
+- name: Scenario 0 - Check Dashboards service
+  ansible.builtin.command:
+    cmd: systemctl is-active opensearch-dashboards
+  register: test0_dashboards_service
+  changed_when: false
+
+- name: Scenario 0 - Get OpenSearch information
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:9200/"
+    method: GET
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    status_code: 200
+  register: test0_info
+  changed_when: false
+  no_log: true
+
+- name: Scenario 0 - Check cluster health
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:9200/_cluster/health"
+    method: GET
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    status_code: 200
+  register: test0_health
+  changed_when: false
+  no_log: true
+
+- name: Scenario 0 - Check Security plugin
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:9200/_plugins/_security/health"
+    method: GET
+    validate_certs: false
+    use_proxy: false
+    status_code: 200
+  register: test0_security
+  changed_when: false
+
+- name: Scenario 0 - Verify anonymous access is denied
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:9200/"
+    method: GET
+    validate_certs: false
+    use_proxy: false
+    status_code: 401
+  register: test0_anonymous
+  changed_when: false
+
+- name: Scenario 0 - Check logs data stream
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:9200/_data_stream/logs"
+    method: GET
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    use_proxy: false
+    status_code: 200
+  register: test0_logs
+  changed_when: false
+  no_log: true
+
+- name: Scenario 0 - Check Dashboards HTTP endpoint
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:5601/"
+    method: GET
+    follow_redirects: none
+    use_proxy: false
+    status_code:
+      - 200
+      - 302
+  register: test0_dashboards_http
+  changed_when: false
+
+- name: Scenario 0 - Assert OpenSearch readiness
+  ansible.builtin.assert:
+    that:
+      - test0_service.stdout == 'active'
+      - test0_dashboards_service.stdout == 'active'
+      - test0_info.json.version.number == '3.8.0'
+      - test0_health.json.status in ['green', 'yellow']
+      - test0_health.json.number_of_nodes == 1
+      - test0_security.json.status == 'UP'
+      - test0_security.json.mode == 'strict'
+      - test0_anonymous.status == 401
+      - test0_logs.json.data_streams[0].name == 'logs'
+      - test0_dashboards_http.status in [200, 302]
+    quiet: true
+    fail_msg: "Scenario 0 FAILED - OpenSearch is not ready."
+    success_msg: "Scenario 0 PASSED - OpenSearch is healthy, secured and ready."

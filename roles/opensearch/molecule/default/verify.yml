@@ -1,0 +1,17 @@
+---
+- name: Verify OpenSearch laboratory scenarios
+  hosts: opensearch
+  gather_facts: false
+
+  tasks:
+    - name: Run scenario 0 - OpenSearch readiness
+      ansible.builtin.import_tasks: verify_00.yml
+
+    - name: Run scenario 1 - Write-only user
+      ansible.builtin.import_tasks: verify_01.yml
+
+    - name: Run scenario 2 - Read-only user
+      ansible.builtin.import_tasks: verify_02.yml
+
+    - name: Run scenario 3 - Cluster administrator
+      ansible.builtin.import_tasks: verify_03.yml

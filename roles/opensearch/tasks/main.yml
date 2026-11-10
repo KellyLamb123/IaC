@@ -25,6 +25,18 @@
 - name: Verify OpenSearch
   ansible.builtin.import_tasks: verify_opensearch.yml
 
+- name: Configure lab Security roles
+  ansible.builtin.import_tasks: configure_security_roles.yml
+
+- name: Configure lab Security users
+  ansible.builtin.import_tasks: configure_security_users.yml
+
+- name: Configure lab role mappings
+  ansible.builtin.import_tasks: configure_role_mappings.yml
+
+- name: Configure logs data stream
+  ansible.builtin.import_tasks: configure_logs_datastream.yml
+
 - name: Configure Dashboards service account
   ansible.builtin.import_tasks: configure_dashboards_user.yml
   tags: dashboards
