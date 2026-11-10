@@ -1,0 +1,12 @@
+cluster.name: "{{ opensearch_cluster_name }}"
+node.name: "{{ opensearch_node_name }}"
+
+path.data: "{{ opensearch_data_path }}"
+path.logs: "{{ opensearch_logs_path }}"
+
+network.host: "{{ opensearch_network_host }}"
+http.port: {{ opensearch_http_port }}
+
+discovery.type: single-node
+
+plugins.security.disabled: true

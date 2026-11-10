@@ -1,0 +1,8 @@
+---
+- name: Deploy OpenSearch and OpenSearch Dashboards
+  hosts: opensearch
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: opensearch
