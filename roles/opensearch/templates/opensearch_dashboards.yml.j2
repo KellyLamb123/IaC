@@ -1,6 +1,25 @@
+---
 server.name: "opensearch-dashboards"
 server.host: "{{ opensearch_dashboards_host }}"
 server.port: {{ opensearch_dashboards_port }}
 
+# HTTPS connection to OpenSearch
 opensearch.hosts:
-  - "http://127.0.0.1:{{ opensearch_http_port }}"
+  - "https://127.0.0.1:{{ opensearch_http_port }}"
+
+# Service authentication
+opensearch.username: "kibanaserver"
+opensearch.password: {{ vault_opensearch_dashboards_password | to_json }}
+
+# TLS certificate verification
+opensearch.ssl.verificationMode: certificate
+opensearch.ssl.certificateAuthorities:
+  - "/etc/opensearch-dashboards/root-ca.pem"
+
+# Forward authentication headers
+opensearch.requestHeadersAllowlist:
+  - authorization
+  - securitytenant
+
+# Local HTTP access to Dashboards
+opensearch_security.cookie.secure: false

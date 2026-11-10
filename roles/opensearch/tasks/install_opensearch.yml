@@ -6,9 +6,6 @@
     update_cache: true
     force_apt_get: true
     policy_rc_d: 101
-  environment:
-    DISABLE_INSTALL_DEMO_CONFIG: "true"
-    DISABLE_SECURITY_PLUGIN: "true"
   notify: Restart OpenSearch
 
 - name: Check installed OpenSearch version

@@ -1,5 +1,15 @@
 ---
-- name: Configure OpenSearch Dashboards using Jinja2 template
+- name: Install OpenSearch CA certificate for Dashboards
+  ansible.builtin.copy:
+    src: /etc/opensearch/root-ca.pem
+    dest: /etc/opensearch-dashboards/root-ca.pem
+    remote_src: true
+    owner: root
+    group: opensearch-dashboards
+    mode: "0644"
+  notify: Restart OpenSearch Dashboards
+
+- name: Configure OpenSearch Dashboards
   ansible.builtin.template:
     src: opensearch_dashboards.yml.j2
     dest: "{{ opensearch_dashboards_config_path }}"
@@ -7,6 +17,7 @@
     group: opensearch-dashboards
     mode: "0640"
   notify: Restart OpenSearch Dashboards
+  no_log: true
 
 - name: Apply pending OpenSearch Dashboards handler
   ansible.builtin.meta: flush_handlers

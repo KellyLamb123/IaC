@@ -1,3 +1,4 @@
+---
 cluster.name: "{{ opensearch_cluster_name }}"
 node.name: "{{ opensearch_node_name }}"
 
@@ -9,4 +10,33 @@ http.port: {{ opensearch_http_port }}
 
 discovery.type: single-node
 
-plugins.security.disabled: true
+# Transport TLS
+plugins.security.ssl.transport.pemcert_filepath: esnode.pem
+plugins.security.ssl.transport.pemkey_filepath: esnode-key.pem
+plugins.security.ssl.transport.pemtrustedcas_filepath: root-ca.pem
+transport.ssl.enforce_hostname_verification: false
+
+# HTTPS REST API
+plugins.security.ssl.http.enabled: true
+plugins.security.ssl.http.pemcert_filepath: esnode.pem
+plugins.security.ssl.http.pemkey_filepath: esnode-key.pem
+plugins.security.ssl.http.pemtrustedcas_filepath: root-ca.pem
+
+# Demo certificates (local lab only)
+plugins.security.allow_unsafe_democertificates: true
+plugins.security.allow_default_init_securityindex: true
+
+# Administrator certificate
+plugins.security.authcz.admin_dn:
+  - "CN=kirk,OU=client,O=client,L=test,C=de"
+
+# OpenSearch node certificate
+plugins.security.nodes_dn:
+  - "CN=node-*.example.com,OU=node,O=node,L=test,C=de"
+
+# Security REST API
+plugins.security.restapi.roles_enabled:
+  - all_access
+  - security_rest_api_access
+
+plugins.security.system_indices.enabled: true

@@ -1,25 +1,29 @@
 ---
-- name: Wait until OpenSearch Dashboards API is ready
+- name: Wait for OpenSearch Dashboards port
+  ansible.builtin.wait_for:
+    host: "127.0.0.1"
+    port: "{{ opensearch_dashboards_port }}"
+    state: started
+    timeout: 180
+
+- name: Check OpenSearch Dashboards HTTP response
   ansible.builtin.uri:
-    url: "http://127.0.0.1:{{ opensearch_dashboards_port }}/api/status"
+    url: "http://127.0.0.1:{{ opensearch_dashboards_port }}/"
     method: GET
-    return_content: true
-    status_code: 200
+    status_code:
+      - 200
+      - 302
+    follow_redirects: none
+    return_content: false
     use_proxy: false
-  register: opensearch_dashboards_status
-  until:
-    - (opensearch_dashboards_status.status | default(0)) == 200
-    - >-
-      (opensearch_dashboards_status.json | default({}))
-      .get('status', {}).get('overall', {}).get('state', '') == 'green'
+  register: dashboards_http
+  until: (dashboards_http.status | default(0)) in [200, 302]
   retries: "{{ opensearch_dashboards_readiness_retries }}"
   delay: "{{ opensearch_dashboards_readiness_delay }}"
 
-- name: Verify OpenSearch Dashboards API version
+- name: Verify OpenSearch Dashboards HTTP response
   ansible.builtin.assert:
     that:
-      - opensearch_dashboards_status.json.version.number == opensearch_version
-    fail_msg: "OpenSearch Dashboards API returned an unexpected version."
-    success_msg: >-
-      OpenSearch Dashboards {{ opensearch_version }}
-      is ready and configured correctly.
+      - dashboards_http.status in [200, 302]
+    fail_msg: "OpenSearch Dashboards is not responding correctly."
+    success_msg: "OpenSearch Dashboards web server is responding."

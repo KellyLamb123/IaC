@@ -1,31 +1,9 @@
+---
 - name: Install OpenSearch Dashboards specified version
   ansible.builtin.apt:
     name: "{{ opensearch_dashboards_package_name }}={{ opensearch_version }}"
     state: present
     policy_rc_d: 101
-  environment:
-    DISABLE_SECURITY_DASHBOARDS_PLUGIN: "false"
-  notify: Restart OpenSearch Dashboards
-
-- name: Check Security Dashboards plugin directory
-  ansible.builtin.stat:
-    path: /usr/share/opensearch-dashboards/plugins/securityDashboards
-  register: opensearch_dashboards_security_plugin
-
-- name: Stop Dashboards before removing Security plugin
-  ansible.builtin.systemd_service:
-    name: opensearch-dashboards
-    state: stopped
-  when: opensearch_dashboards_security_plugin.stat.exists
-
-- name: Remove Security Dashboards plugin if present
-  ansible.builtin.command:
-    argv:
-      - /usr/share/opensearch-dashboards/bin/opensearch-dashboards-plugin
-      - remove
-      - securityDashboards
-      - --allow-root
-    removes: /usr/share/opensearch-dashboards/plugins/securityDashboards
   notify: Restart OpenSearch Dashboards
 
 - name: Check installed OpenSearch Dashboards version
@@ -42,5 +20,42 @@
   ansible.builtin.assert:
     that:
       - opensearch_dashboards_installed_version.stdout == opensearch_version
-    fail_msg: "Incorrect OpenSearch Dashboards version is installed."
+    fail_msg: "Incorrect OpenSearch Dashboards version."
     success_msg: "OpenSearch Dashboards {{ opensearch_version }} is installed."
+
+- name: Check Security Dashboards plugin
+  ansible.builtin.stat:
+    path: /usr/share/opensearch-dashboards/plugins/securityDashboards
+  register: security_dashboards_plugin
+
+- name: Stop Dashboards before plugin installation
+  ansible.builtin.systemd_service:
+    name: opensearch-dashboards
+    state: stopped
+  when: not security_dashboards_plugin.stat.exists
+
+- name: Install Security Dashboards plugin
+  ansible.builtin.command:
+    argv:
+      - /usr/share/opensearch-dashboards/bin/opensearch-dashboards-plugin
+      - install
+      - securityDashboards
+      - --allow-root
+    creates: /usr/share/opensearch-dashboards/plugins/securityDashboards
+  notify: Restart OpenSearch Dashboards
+
+- name: List installed Dashboards plugins
+  ansible.builtin.command:
+    argv:
+      - /usr/share/opensearch-dashboards/bin/opensearch-dashboards-plugin
+      - list
+      - --allow-root
+  register: dashboards_plugin_list
+  changed_when: false
+
+- name: Verify Security Dashboards plugin
+  ansible.builtin.assert:
+    that:
+      - "'securityDashboards@' in dashboards_plugin_list.stdout"
+    fail_msg: "Security Dashboards plugin is missing."
+    success_msg: "Security Dashboards plugin is installed."

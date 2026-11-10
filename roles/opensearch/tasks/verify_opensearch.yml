@@ -1,8 +1,12 @@
 ---
-- name: Wait until OpenSearch API is ready
+- name: Wait until secured OpenSearch API is ready
   ansible.builtin.uri:
-    url: "http://127.0.0.1:{{ opensearch_http_port }}/_cluster/health"
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_cluster/health"
     method: GET
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
     return_content: true
     status_code: 200
   register: opensearch_health
@@ -11,17 +15,22 @@
     - >-
       (opensearch_health.json | default({})).get('status', '')
       in ['green', 'yellow']
-
   retries: "{{ opensearch_readiness_retries }}"
   delay: "{{ opensearch_readiness_delay }}"
+  no_log: true
 
-- name: Get OpenSearch information
+- name: Get secured OpenSearch information
   ansible.builtin.uri:
-    url: "http://127.0.0.1:{{ opensearch_http_port }}"
+    url: "https://127.0.0.1:{{ opensearch_http_port }}"
     method: GET
+    url_username: admin
+    url_password: "{{ vault_opensearch_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
     return_content: true
     status_code: 200
   register: opensearch_info
+  no_log: true
 
 - name: Verify OpenSearch version and cluster name
   ansible.builtin.assert:
@@ -29,4 +38,21 @@
       - opensearch_info.json.version.number == opensearch_version
       - opensearch_info.json.cluster_name == opensearch_cluster_name
     fail_msg: "OpenSearch API returned unexpected configuration."
-    success_msg: "OpenSearch {{ opensearch_version }} is ready and configured correctly."
+    success_msg: "Secured OpenSearch {{ opensearch_version }} is ready."
+
+- name: Check OpenSearch Security plugin health
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_plugins/_security/health"
+    method: GET
+    validate_certs: false
+    return_content: true
+    status_code: 200
+  register: opensearch_security_health
+
+- name: Verify OpenSearch Security is active
+  ansible.builtin.assert:
+    that:
+      - opensearch_security_health.json.status == 'UP'
+      - opensearch_security_health.json.mode == 'strict'
+    fail_msg: "OpenSearch Security is not ready."
+    success_msg: "OpenSearch Security is active and ready."

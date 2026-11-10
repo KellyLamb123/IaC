@@ -1,0 +1,57 @@
+---
+- name: Remove previously disabled Security setting
+  ansible.builtin.lineinfile:
+    path: "{{ opensearch_config_path }}"
+    regexp: '^\s*plugins\.security\.disabled\s*:'
+    state: absent
+
+- name: Initialize OpenSearch Security
+  ansible.builtin.command:
+    argv:
+      - /usr/share/opensearch/plugins/opensearch-security/tools/install_demo_configuration.sh
+      - -y
+      - -i
+    creates: /etc/opensearch/root-ca.pem
+  environment:
+    OPENSEARCH_INITIAL_ADMIN_PASSWORD: "{{ vault_opensearch_admin_password }}"
+    OPENSEARCH_PATH_CONF: /etc/opensearch
+  no_log: true
+
+- name: Check Security certificates
+  ansible.builtin.stat:
+    path: "/etc/opensearch/{{ item }}"
+    get_checksum: false
+  loop:
+    - root-ca.pem
+    - esnode.pem
+    - esnode-key.pem
+    - kirk.pem
+    - kirk-key.pem
+  loop_control:
+    label: "{{ item }}"
+  register: security_certificates
+
+- name: Verify Security certificates
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists | default(false)
+      - item.stat.isreg | default(false)
+    quiet: true
+    fail_msg: "Missing Security certificate: {{ item.item }}"
+  loop: "{{ security_certificates.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Protect OpenSearch node private key
+  ansible.builtin.file:
+    path: /etc/opensearch/esnode-key.pem
+    owner: opensearch
+    group: opensearch
+    mode: "0600"
+
+- name: Protect OpenSearch administrator private key
+  ansible.builtin.file:
+    path: /etc/opensearch/kirk-key.pem
+    owner: root
+    group: root
+    mode: "0600"

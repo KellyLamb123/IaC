@@ -1,0 +1,50 @@
+---
+- name: Check Dashboards service account credentials
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_plugins/_security/authinfo"
+    method: GET
+    url_username: kibanaserver
+    url_password: "{{ vault_opensearch_dashboards_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    status_code:
+      - 200
+      - 401
+    use_proxy: false
+  register: dashboards_credentials
+  changed_when: false
+  no_log: true
+
+- name: Set initial Dashboards service account password
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_plugins/_security/api/account"
+    method: PUT
+    url_username: kibanaserver
+    url_password: "kibanaserver"
+    force_basic_auth: true
+    validate_certs: false
+    body_format: json
+    body:
+      current_password: "kibanaserver"
+      password: "{{ vault_opensearch_dashboards_password }}"
+    status_code: 200
+    use_proxy: false
+  when: dashboards_credentials.status == 401
+  no_log: true
+
+- name: Verify Dashboards service account credentials
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ opensearch_http_port }}/_plugins/_security/authinfo"
+    method: GET
+    url_username: kibanaserver
+    url_password: "{{ vault_opensearch_dashboards_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    status_code: 200
+    use_proxy: false
+  changed_when: false
+  no_log: true
+
+- name: Confirm Dashboards service account
+  ansible.builtin.debug:
+    msg: "Dashboards service account is configured correctly."

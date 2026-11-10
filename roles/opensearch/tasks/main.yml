@@ -4,7 +4,7 @@
     that:
       - ansible_facts["distribution"] == "Ubuntu"
       - ansible_facts["os_family"] == "Debian"
-    fail_msg: "This role currently supports Ubuntu/Debian-based systems only."
+    fail_msg: "This role supports Ubuntu/Debian-based systems only."
     success_msg: "Supported Ubuntu target detected."
 
 - name: Prepare OpenSearch repositories
@@ -16,17 +16,27 @@
 - name: Install OpenSearch
   ansible.builtin.import_tasks: install_opensearch.yml
 
+- name: Initialize OpenSearch Security
+  ansible.builtin.import_tasks: initialize_security.yml
+
 - name: Configure OpenSearch
   ansible.builtin.import_tasks: configure_opensearch.yml
 
 - name: Verify OpenSearch
   ansible.builtin.import_tasks: verify_opensearch.yml
 
+- name: Configure Dashboards service account
+  ansible.builtin.import_tasks: configure_dashboards_user.yml
+  tags: dashboards
+
 - name: Install OpenSearch Dashboards
   ansible.builtin.import_tasks: install_dashboards.yml
+  tags: dashboards
 
 - name: Configure OpenSearch Dashboards
   ansible.builtin.import_tasks: configure_dashboards.yml
+  tags: dashboards
 
 - name: Verify OpenSearch Dashboards
   ansible.builtin.import_tasks: verify_dashboards.yml
+  tags: dashboards
